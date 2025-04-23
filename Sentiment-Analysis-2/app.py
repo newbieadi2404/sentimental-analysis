@@ -8,21 +8,20 @@ import matplotlib.pyplot as plt
 import string
 import nltk
 import pandas as pd
-try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
-except LookupError:
-    nltk.download('vader_lexicon')
 
+# 🔄 Safe download of required NLTK packages
+nltk_packages = ['punkt', 'vader_lexicon']
+for pkg in nltk_packages:
+    try:
+        nltk.data.find(f'tokenizers/{pkg}' if pkg == 'punkt' else f'sentiment/{pkg}')
+    except LookupError:
+        nltk.download(pkg)
 
-# Download required NLTK data
-nltk.download('vader_lexicon')
-nltk.download('punkt')
-
-# Streamlit App Title
+# 🌟 Streamlit App Setup
 st.set_page_config(page_title="Sentiment & Emotion Analyzer", layout="centered")
 st.title("🧠 Sentiment and Emotion Analysis App")
 
-# File Upload or Text Input
+# 📤 File Upload or Text Input
 uploaded_file = st.file_uploader("📂 Upload a .txt or .csv file", type=['txt', 'csv'])
 text = ""
 
@@ -35,12 +34,12 @@ if uploaded_file is not None:
 else:
     text = st.text_area("✍️ Or enter your text here:")
 
-# Analyze Button
+# 🔍 Analyze Button
 if st.button("🔍 Analyze"):
     if not text.strip():
         st.warning("⚠️ Please provide text input or upload a file.")
     else:
-        # Sentiment Analysis
+        # 📊 Sentiment Analysis
         analyzer = SentimentIntensityAnalyzer()
         score = analyzer.polarity_scores(text)
 
@@ -54,12 +53,12 @@ if st.button("🔍 Analyze"):
         else:
             st.info("Overall Sentiment: Neutral 😐")
 
-        # Clean text and tokenize
+        # ✨ Clean text and tokenize
         text_clean = text.lower().translate(str.maketrans('', '', string.punctuation))
         tokens = word_tokenize(text_clean)
         emotions = []
 
-        # Emotion Detection
+        # 🧠 Emotion Detection
         try:
             with open("emotions.txt", 'r') as file:
                 for line in file:
@@ -71,7 +70,7 @@ if st.button("🔍 Analyze"):
             if emotions:
                 st.write(emotions)
 
-                # Plotting Emotion Counts
+                # 📈 Plot Emotion Counts
                 emotion_count = Counter(emotions)
                 fig, ax = plt.subplots()
                 ax.bar(emotion_count.keys(), emotion_count.values(), color='skyblue')
@@ -86,12 +85,12 @@ if st.button("🔍 Analyze"):
         except FileNotFoundError:
             st.warning("⚠️ emotions.txt not found. Please make sure it's in the same folder.")
 
-        # Subjectivity using TextBlob
+        # 🔍 Subjectivity Score
         blob = TextBlob(text)
         st.subheader("🌀 Subjectivity")
         st.write(f"{blob.sentiment.subjectivity:.2f} (0 = Objective, 1 = Subjective)")
 
-        # Word Cloud
+        # ☁️ Word Cloud
         try:
             wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text_clean)
             st.subheader("☁️ Word Cloud")
