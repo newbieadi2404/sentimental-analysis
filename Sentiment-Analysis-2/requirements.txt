@@ -4,3 +4,4 @@ streamlit
 pandas 
 seaborn
 scikit-learn
+textblob
