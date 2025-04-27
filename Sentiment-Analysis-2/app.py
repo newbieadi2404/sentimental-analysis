@@ -1,6 +1,7 @@
 import streamlit as st
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 from textblob import TextBlob
 from wordcloud import WordCloud
 from collections import Counter
@@ -9,17 +10,16 @@ import string
 import nltk
 import pandas as pd
 
-
-
-
-
 # 🔄 Download required NLTK packages safely
-nltk_packages = ['punkt', 'vader_lexicon']
+nltk_packages = ['punkt', 'vader_lexicon', 'wordnet']
 for pkg in nltk_packages:
     try:
-        nltk.data.find(f'tokenizers/{pkg}' if pkg == 'punkt' else f'sentiment/{pkg}')
+        nltk.data.find(f'tokenizers/{pkg}' if pkg == 'punkt' else f'sentiment/{pkg}' if pkg == 'vader_lexicon' else f'corpora/{pkg}')
     except LookupError:
         nltk.download(pkg)
+
+# 🧠 Lemmatizer
+lemmatizer = WordNetLemmatizer()
 
 # 🌟 Streamlit Setup
 st.set_page_config(page_title="Sentiment & Emotion Analyzer", layout="centered")
@@ -46,6 +46,15 @@ def load_emotions():
     except FileNotFoundError:
         st.warning("⚠️ emotions.txt not found. Please place it in the project folder.")
     return emotion_map
+
+# Utility: Detect emotions smartly
+def get_emotions_from_tokens(tokens, emotion_dict):
+    detected_emotions = []
+    for word in tokens:
+        lemma = lemmatizer.lemmatize(word)
+        if lemma in emotion_dict:
+            detected_emotions.append(emotion_dict[lemma])
+    return detected_emotions
 
 # ================================================
 # 📄 SINGLE TEXT ANALYSIS
@@ -77,17 +86,17 @@ with tabs[0]:
             # Clean + Tokenize
             text_clean = text.lower().translate(str.maketrans('', '', string.punctuation))
             tokens = word_tokenize(text_clean)
-            emotions = []
             emotion_dict = load_emotions()
-
-            for word in tokens:
-                if word in emotion_dict:
-                    emotions.append(emotion_dict[word])
+            emotions = get_emotions_from_tokens(tokens, emotion_dict)
 
             st.subheader("🧠 Detected Emotions")
             if emotions:
-                st.write(emotions)
+                # Show emotions beautifully
+                unique_emotions = list(set(emotions))
+                for emo in unique_emotions:
+                    st.markdown(f"<span style='background-color:#D1E8E4;padding:8px;border-radius:10px;margin:2px;display:inline-block;'>{emo.capitalize()}</span>", unsafe_allow_html=True)
 
+                # Plot emotion counts
                 emotion_count = Counter(emotions)
                 fig, ax = plt.subplots()
                 ax.bar(emotion_count.keys(), emotion_count.values(), color='skyblue')
@@ -119,7 +128,7 @@ with tabs[0]:
             single_result = pd.DataFrame({
                 "Original Text": [text],
                 "Compound Score": [score['compound']],
-                "Emotions": [', '.join(emotions) if emotions else "None"],
+                "Emotions": [', '.join(unique_emotions) if emotions else "None"],
                 "Subjectivity": [blob.sentiment.subjectivity]
             })
 
@@ -146,7 +155,7 @@ with tabs[1]:
                 row_blob = TextBlob(row_text)
 
                 tokens = word_tokenize(row_text.lower().translate(str.maketrans('', '', string.punctuation)))
-                row_emotions = [emotion_dict[word] for word in tokens if word in emotion_dict]
+                row_emotions = get_emotions_from_tokens(tokens, emotion_dict)
 
                 if "sad" in row_emotions:
                     sad_detected = True
@@ -155,7 +164,7 @@ with tabs[1]:
                     "Text": row_text,
                     "Compound Score": row_score['compound'],
                     "Subjectivity": row_blob.sentiment.subjectivity,
-                    "Emotions": ', '.join(row_emotions) if row_emotions else "None"
+                    "Emotions": ', '.join(list(set(row_emotions))) if row_emotions else "None"
                 })
 
             result_df = pd.DataFrame(results)
